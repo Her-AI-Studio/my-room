@@ -16,6 +16,7 @@ import { initCareAssistant, populateCarePlantSelect, updateOllamaStatus, syncCar
 import { getOllamaConfig } from './ollama.js'
 
 const $ = (id) => document.getElementById(id)
+const setDisabled = (id, val) => { const el = $(id); if (el) el.disabled = val }
 
 const video = $('video')
 const statusEl = $('status')
@@ -217,9 +218,9 @@ async function extractAndImportFrames() {
   const classId = classSelect.value
   const className = classes.find((c) => c.classId === classId)?.name ?? 'class'
 
-  $('btn-extract-frames').disabled = true
-  $('btn-record-video').disabled = true
-  $('btn-import-images').disabled = true
+  setDisabled('btn-extract-frames', true)
+  setDisabled('btn-record-video', true)
+  setDisabled('btn-import-images', true)
 
   try {
     statusEl.textContent = 'Loading ffmpeg and extracting frames…'
@@ -245,8 +246,9 @@ async function extractAndImportFrames() {
     statusEl.textContent = `Frame extraction failed: ${err.message}`
     console.error(err)
   } finally {
-    $('btn-record-video').disabled = false
-    $('btn-import-images').disabled = false
+    setDisabled('btn-extract-frames', true)
+    setDisabled('btn-record-video', true)
+    setDisabled('btn-import-images', true)
     updateVideoUi()
   }
 }

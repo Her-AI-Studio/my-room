@@ -7,15 +7,12 @@ const CORE_BASE = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${CORE_VERSION}/dis
 /** @type {FFmpeg | null} */
 let ffmpeg = null
 
-/**
- * Load ffmpeg.wasm once (downloads ~25 MB on first use).
- * @param {(message: string) => void} [onProgress]
- */
 export async function loadFfmpeg(onProgress) {
   if (ffmpeg?.loaded) return ffmpeg
 
   ffmpeg = new FFmpeg()
-  ffmpeg.on('log', ({ message }) => {
+  ffmpeg.on('log', ({ type, message }) => {
+    console.log(`[ffmpeg ${type}]`, message)
     if (onProgress) onProgress(message)
   })
 
@@ -37,49 +34,98 @@ export async function loadFfmpeg(onProgress) {
  * @returns {Promise<Blob[]>}
  */
 export async function extractFrames(videoBlob, options = {}) {
-  const { fps = 1, maxFrames = 60, onProgress } = options
-  const ff = await loadFfmpeg(onProgress)
+  const { fps = 1, maxFrames = 30, onProgress } = options
 
-  const ext = videoBlob.type.includes('mp4') ? 'mp4' : 'webm'
-  const inputName = `input.${ext}`
+  // Decode frames in the browser using VideoDecoder — no wasm memory pressure
+  onProgress?.('Decoding video…')
+  const frames = await decodeFramesFromBlob(videoBlob, fps, maxFrames, onProgress)
 
-  for (const entry of await ff.listDir('.')) {
-    if (!entry.isDir && entry.name !== '.') {
-      await ff.deleteFile(entry.name)
-    }
+  if (frames.length === 0) {
+    throw new Error('No frames extracted. Try a shorter video or lower fps.')
   }
 
-  onProgress?.('Writing video to ffmpeg…')
-  await ff.writeFile(inputName, await fetchFile(videoBlob))
-
-  onProgress?.(`Extracting ${fps} frame(s) per second…`)
-  await ff.exec([
-    '-i',
-    inputName,
-    '-vf',
-    `fps=${fps}`,
-    '-frames:v',
-    String(maxFrames),
-    '-q:v',
-    '2',
-    'frame_%04d.jpg',
-  ])
-
-  const entries = await ff.listDir('.')
-  const frameNames = entries
-    .filter((e) => !e.isDir && /^frame_\d+\.jpg$/.test(e.name))
-    .map((e) => e.name)
-    .sort()
-
-  onProgress?.(`Read ${frameNames.length} frame(s).`)
-
-  const frames = []
-  for (const name of frameNames) {
-    const data = await ff.readFile(name)
-    frames.push(new Blob([data], { type: 'image/jpeg' }))
-    await ff.deleteFile(name)
-  }
-
-  await ff.deleteFile(inputName)
+  onProgress?.(`Extracted ${frames.length} frame(s).`)
   return frames
+}
+
+/**
+ * Use the browser's native VideoDecoder + canvas to extract frames.
+ * Much more memory-efficient than ffmpeg.wasm for this use case.
+ */
+async function decodeFramesFromBlob(blob, fps, maxFrames, onProgress) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.src = URL.createObjectURL(blob)
+    video.muted = true
+    video.playsInline = true
+
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    canvas.width = 224
+    canvas.height = 224
+
+    const frames = []
+    let currentTime = 0
+    let interval = 1 / fps
+
+    video.addEventListener('loadedmetadata', () => {
+      const duration = video.duration
+      if (!isFinite(duration)) {
+        // webm from MediaRecorder often has no duration — seek trick
+        video.currentTime = 1e101
+      } else {
+        startCapture(duration)
+      }
+    })
+
+    // For webm blobs with no duration, this fires after the seek trick
+    video.addEventListener('timeupdate', function onTimeUpdate() {
+      if (video.currentTime > 0 && !isFinite(video.duration) === false) {
+        video.removeEventListener('timeupdate', onTimeUpdate)
+        startCapture(video.duration)
+      }
+    })
+
+    // Fallback for webm blobs that never report duration
+    video.addEventListener('seeked', function onSeeked() {
+      if (!isFinite(video.duration)) {
+        video.removeEventListener('seeked', onSeeked)
+        startCapture(video.currentTime)
+      }
+    })
+
+    video.addEventListener('error', (e) => {
+      reject(new Error(`Video load error: ${video.error?.message ?? e}`))
+    })
+
+    video.load()
+
+    function startCapture(duration) {
+      currentTime = 0
+
+      function captureNext() {
+        if (currentTime > duration || frames.length >= maxFrames) {
+          URL.revokeObjectURL(video.src)
+          resolve(frames)
+          return
+        }
+
+        onProgress?.(`Capturing frame ${frames.length + 1} at ${currentTime.toFixed(2)}s…`)
+        video.currentTime = currentTime
+
+        video.addEventListener('seeked', function onSeeked() {
+          video.removeEventListener('seeked', onSeeked)
+
+          ctx.drawImage(video, 0, 0, 224, 224)
+          canvas.toBlob((blob) => {
+            if (blob) frames.push(blob)
+            currentTime += interval
+            captureNext()
+          }, 'image/jpeg', 0.85)
+        })
+      }
+
+      captureNext()
+    }
+  })
 }

@@ -2,7 +2,7 @@ let plantsMeta = {}
 
 export async function loadPlantsMeta() {
   try {
-    const res = await fetch('/plants.json')
+    const res = await fetch('./plants.json')
     plantsMeta = await res.json()
   } catch {
     plantsMeta = {}
