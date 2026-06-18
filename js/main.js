@@ -155,7 +155,8 @@ function captureSample() {
 
 function updateVideoUi() {
   const hasVideo = Boolean(recordedVideoBlob)
-  $('btn-extract-frames').disabled = !hasVideo || !classSelect.value || !mobileNetModel
+  setDisabled('btn-extract-frames', !hasVideo || !classSelect.value || !mobileNetModel)
+  setDisabled('btn-clear-video', !hasVideo)
   $('video-preview-wrap').hidden = !hasVideo
   if (hasVideo && recordedVideoBlob) {
     const preview = $('video-preview')
@@ -164,6 +165,14 @@ function updateVideoUi() {
     }
     preview.src = URL.createObjectURL(recordedVideoBlob)
   }
+}
+
+function clearVideo() {
+  const preview = $('video-preview')
+  if (preview?.src?.startsWith('blob:')) URL.revokeObjectURL(preview.src)
+  recordedVideoBlob = null
+  statusEl.textContent = 'Video cleared.'
+  updateVideoUi()
 }
 
 async function toggleRecordVideo() {
@@ -221,9 +230,10 @@ async function extractAndImportFrames() {
   setDisabled('btn-extract-frames', true)
   setDisabled('btn-record-video', true)
   setDisabled('btn-import-images', true)
+  setDisabled('btn-clear-video', true)
 
   try {
-    statusEl.textContent = 'Loading ffmpeg and extracting frames…'
+    statusEl.textContent = 'Extracting frames…'
     const { extractFrames } = await import('./ffmpeg-frames.js')
     const frames = await extractFrames(recordedVideoBlob, {
       fps,
@@ -246,9 +256,10 @@ async function extractAndImportFrames() {
     statusEl.textContent = `Frame extraction failed: ${err.message}`
     console.error(err)
   } finally {
-    setDisabled('btn-extract-frames', true)
-    setDisabled('btn-record-video', true)
-    setDisabled('btn-import-images', true)
+    setDisabled('btn-extract-frames', false)
+    setDisabled('btn-record-video', false)
+    setDisabled('btn-import-images', false)
+    setDisabled('btn-clear-video', false)
     updateVideoUi()
   }
 }
@@ -521,6 +532,7 @@ $('btn-train').addEventListener('click', () =>
 $('btn-clear').addEventListener('click', clearSamples)
 $('btn-record-video')?.addEventListener('click', () => toggleRecordVideo().catch(console.error))
 $('btn-extract-frames')?.addEventListener('click', () => extractAndImportFrames().catch(console.error))
+$('btn-clear-video')?.addEventListener('click', clearVideo)
 $('video-upload')?.addEventListener('change', (e) => handleVideoUpload(e).catch(console.error))
 $('image-upload')?.addEventListener('change', (e) => handleImageUpload(e).catch(console.error))
 classSelect.addEventListener('change', updateVideoUi)
