@@ -1,6 +1,6 @@
-const STORAGE_KEY = 'plant-journal-entries'
+const STORAGE_KEY = 'my-room-entries'
 
-/** @typedef {{ id: string, plantName: string, confidence: number, imageDataUrl: string, note: string, createdAt: string }} JournalEntry */
+/** @typedef {{ id: string, itemName: string, confidence: number, imageDataUrl: string, note: string, createdAt: string }} JournalEntry */
 
 /** @returns {JournalEntry[]} */
 export function loadEntries() {
@@ -19,13 +19,13 @@ function saveEntries(entries) {
 }
 
 /**
- * @param {{ plantName: string, confidence: number, imageDataUrl: string, note?: string }} data
+ * @param {{ itemName: string, confidence: number, imageDataUrl: string, note?: string }} data
  */
 export function addEntry(data) {
   const entries = loadEntries()
   const entry = {
     id: `entry_${Date.now()}`,
-    plantName: data.plantName,
+    itemName: data.itemName,
     confidence: data.confidence,
     imageDataUrl: data.imageDataUrl,
     note: (data.note || '').trim(),
@@ -61,10 +61,10 @@ function formatDate(iso) {
 
 function escapeHtml(s) {
   return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
 }
 
 /**
@@ -76,7 +76,7 @@ export function renderGallery(container, onSelect, selectedId = null) {
   const entries = loadEntries()
   if (!entries.length) {
     container.innerHTML =
-      '<p class="journal-empty">No entries yet. Identify a plant and tap <strong>Save to journal</strong>.</p>'
+      '<p class="journal-empty">No entries yet. Identify an item and tap <strong>Save to journal</strong>.</p>'
     return
   }
 
@@ -90,8 +90,8 @@ export function renderGallery(container, onSelect, selectedId = null) {
     if (entry.id === selectedId) btn.classList.add('is-selected')
     btn.dataset.entryId = entry.id
     btn.innerHTML = `
-      <img src="${entry.imageDataUrl}" alt="${escapeHtml(entry.plantName)}" width="120" height="120" />
-      <span class="journal-card__name">${escapeHtml(entry.plantName)}</span>
+      <img src="${entry.imageDataUrl}" alt="${escapeHtml(entry.itemName)}" width="120" height="120" />
+      <span class="journal-card__name">${escapeHtml(entry.itemName)}</span>
       <span class="journal-card__date">${escapeHtml(formatDate(entry.createdAt))}</span>
     `
     btn.addEventListener('click', () => onSelect(entry))
@@ -113,10 +113,10 @@ export function renderEntryDetail(container, entry) {
   container.hidden = false
   container.innerHTML = `
     <figure class="journal-detail__photo">
-      <img src="${entry.imageDataUrl}" alt="${escapeHtml(entry.plantName)}" />
+      <img src="${entry.imageDataUrl}" alt="${escapeHtml(entry.itemName)}" />
     </figure>
     <p class="journal-detail__meta">
-      <strong>${escapeHtml(entry.plantName)}</strong>
+      <strong>${escapeHtml(entry.itemName)}</strong>
       · ${entry.confidence}% confidence
       · ${escapeHtml(formatDate(entry.createdAt))}
     </p>

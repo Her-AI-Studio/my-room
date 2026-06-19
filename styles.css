@@ -414,63 +414,10 @@ body {
   flex: 1;
 }
 
-/* Care */
-.care-plant-title {
+/* Item info */
+.item-title {
   margin: 0 0 0.75rem;
   font-size: 0.95rem;
-}
-
-.care-card {
-  background: oklch(97% 0.01 291);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  padding: 0.85rem 1rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.88rem;
-}
-
-.care-card__badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--primary);
-  margin: 0 0 0.5rem;
-}
-
-.care-card__sub {
-  margin: 0.65rem 0 0.25rem;
-  font-weight: 600;
-  font-size: 0.8rem;
-}
-
-.care-card__fact {
-  margin: 0.65rem 0 0;
-  font-style: italic;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.care-dl {
-  margin: 0.5rem 0 0;
-}
-
-.care-dl dt {
-  font-weight: 700;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin-top: 0.4rem;
-}
-
-.care-dl dd {
-  margin: 0.15rem 0 0;
-}
-
-.care-card ul {
-  margin: 0.25rem 0 0;
-  padding-left: 1.1rem;
 }
 
 .ollama-status.is-online {
@@ -488,7 +435,7 @@ body {
   color: var(--muted);
 }
 
-.care-chips {
+.item-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -511,7 +458,7 @@ body {
   color: var(--primary);
 }
 
-.care-messages {
+.item-messages {
   max-height: 140px;
   overflow-y: auto;
   border: 1px solid var(--border);
@@ -521,7 +468,7 @@ body {
   background: oklch(99% 0.005 270);
 }
 
-.care-msg {
+.item-msg {
   font-size: 0.82rem;
   padding: 0.4rem 0.5rem;
   border-radius: 0.4rem;
@@ -529,18 +476,18 @@ body {
   max-width: 95%;
 }
 
-.care-msg--user {
+.item-msg--user {
   background: var(--primary);
   color: white;
   margin-left: auto;
 }
 
-.care-msg--assistant {
+.item-msg--assistant {
   background: oklch(95% 0.012 270);
   color: var(--text);
 }
 
-#care-question {
+#item-question {
   flex: 1;
   min-width: 120px;
   padding: 0.5rem 0.65rem;

@@ -1,7 +1,6 @@
 import * as tf from '@tensorflow/tfjs'
 import * as mobilenet from '@tensorflow-models/mobilenet'
-import { loadPlantsMeta, findMeta } from './plants-meta.js'
-import { setCurrentPlant, clearCurrentPlant } from './state.js'
+import { setCurrentItem, clearCurrentItem } from './state.js'
 import { captureVideoFrameDataUrl, sourceToFrameTensor, blobToFrameTensor } from './capture.js'
 import { VideoRecorder } from './video-recorder.js'
 import {
@@ -12,7 +11,7 @@ import {
   renderEntryDetail,
   getEntry,
 } from './journal.js'
-import { initCareAssistant, populateCarePlantSelect, updateOllamaStatus, syncCareFromPlant } from './care-assistant.js'
+import { initItemAssistant, populateItemSelect } from './item-assistant.js'
 import { getOllamaConfig } from './ollama.js'
 
 const $ = (id) => document.getElementById(id)
@@ -82,8 +81,8 @@ async function importFrameBlobs(frameBlobs, classId, onProgress) {
   return added
 }
 
-function syncCarePlantList() {
-  populateCarePlantSelect(classes.map((c) => c.name))
+function syncItemList() {
+  populateItemSelect(classes.map((c) => c.name))
 }
 
 function updateClassSelect() {
@@ -94,7 +93,7 @@ function updateClassSelect() {
     opt.value = ''
     opt.textContent = 'Add a class first'
     classSelect.append(opt)
-    syncCarePlantList()
+    syncItemList()
     updateVideoUi()
     return
   }
@@ -105,7 +104,7 @@ function updateClassSelect() {
     opt.textContent = c.name
     classSelect.append(opt)
   }
-  syncCarePlantList()
+  syncItemList()
   updateVideoUi()
 }
 
@@ -203,7 +202,7 @@ async function toggleRecordVideo() {
     videoRecorder.start(video.srcObject)
     btn.textContent = 'Stop recording'
     btn.classList.add('btn--danger')
-    statusEl.textContent = 'Recording… Move slowly around your potted plant, then stop.'
+    statusEl.textContent = 'Recording… Move slowly around your item, then stop.'
   } catch (err) {
     statusEl.textContent = `Could not start recording: ${err.message}`
   }
@@ -295,7 +294,7 @@ function clearSamples() {
   }
   classIndexMap = []
   lastIdentification = null
-  clearCurrentPlant()
+  clearCurrentItem()
   $('btn-identify').disabled = true
   $('btn-identify-loop').disabled = true
   $('btn-save-journal').disabled = true
@@ -388,10 +387,8 @@ async function identifyOnce() {
   resultLabel.textContent = className
   resultConf.textContent = `${pct}% confidence`
 
-  const meta = findMeta(className)
-
-  lastIdentification = { className, pct, meta }
-  setCurrentPlant(className, meta, pct)
+  lastIdentification = { className, pct }
+  setCurrentItem(className, pct)
   $('btn-save-journal').disabled = false
 
   return lastIdentification
@@ -409,13 +406,11 @@ function refreshJournalUi() {
 function selectJournalEntry(entry) {
   selectedJournalId = entry.id
   refreshJournalUi()
-  const meta = findMeta(entry.plantName)
-  syncCareFromPlant({ name: entry.plantName, meta, confidence: entry.confidence })
 }
 
 async function saveToJournal() {
   if (!lastIdentification) {
-    identifyStatusEl.textContent = 'Identify a plant first.'
+    identifyStatusEl.textContent = 'Identify an item first.'
     return
   }
   $('btn-save-journal').disabled = true
@@ -423,20 +418,15 @@ async function saveToJournal() {
     const imageDataUrl = captureVideoFrameDataUrl(video)
     const note = $('journal-note')?.value ?? ''
     const entry = addEntry({
-      plantName: lastIdentification.className,
+      itemName: lastIdentification.className,
       confidence: lastIdentification.pct,
       imageDataUrl,
       note,
     })
     if ($('journal-note')) $('journal-note').value = ''
-    identifyStatusEl.textContent = `Saved "${entry.plantName}" to your journal.`
+    identifyStatusEl.textContent = `Saved "${entry.itemName}" to your journal.`
     selectedJournalId = entry.id
     refreshJournalUi()
-    syncCareFromPlant({
-      name: entry.plantName,
-      meta: lastIdentification.meta,
-      confidence: entry.confidence,
-    })
   } catch (err) {
     identifyStatusEl.textContent = `Could not save: ${err.message}`
     console.error(err)
@@ -451,8 +441,6 @@ function deleteSelectedEntry() {
   deleteEntry(selectedJournalId)
   selectedJournalId = null
   refreshJournalUi()
-  $('care-card').textContent = 'Select a journal entry or plant to see care tips.'
-  $('care-plant-display').textContent = '—'
 }
 
 function clearJournal() {
@@ -460,8 +448,6 @@ function clearJournal() {
   clearAllEntries()
   selectedJournalId = null
   refreshJournalUi()
-  $('care-card').textContent = 'Select a journal entry or plant to see care tips.'
-  $('care-plant-display').textContent = '—'
 }
 
 function stopLiveLoop() {
@@ -543,12 +529,11 @@ $('btn-delete-entry')?.addEventListener('click', deleteSelectedEntry)
 $('btn-clear-journal')?.addEventListener('click', clearJournal)
 
 setupTabs()
-initCareAssistant()
+initItemAssistant()
 initOllamaInputs()
 
 ;(async () => {
   try {
-    await loadPlantsMeta()
     await initCamera()
     await loadMobileNet()
     updateCounts()

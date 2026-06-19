@@ -1,6 +1,6 @@
-# Plant Journal
+# My Room
 
-Hands-on capstone for **Her AI Studio — Week 1**. This app lets you train a plant classifier, identify your plants with a camera, and keep a photo journal with care tips.
+Hands-on capstone for **Her AI Studio — Week 1**. This app lets you train a camera classifier to recognize your belongings, identify them with your camera, and keep a photo journal with notes.
 
 The big question for this lesson: **where does your data go, and where do the models actually run?**
 
@@ -24,7 +24,7 @@ The app has three tabs. Each one uses different data and different models.
 
 ### Train
 
-**What you do:** Name plant classes (e.g. `Fern`, `Succulent`), collect training samples, then train a classifier.
+**What you do:** Name classes (e.g. `Nintendo Switch game`, `Copic marker`, `Pokémon card`), collect training samples, then train a classifier.
 
 **How you collect samples:**
 - **Capture sample** — grab a single still frame from the live webcam
@@ -35,7 +35,7 @@ The app has three tabs. Each one uses different data and different models.
 
 | Piece | What it is | Where it runs |
 |-------|-----------|---------------|
-| **MobileNet** | Pre-trained vision model that turns each image into a numeric “fingerprint” (embedding) | Your browser (TensorFlow.js). Weights download once from the internet, then inference is local. |
+| **MobileNet** | Pre-trained vision model that turns each image into a numeric "fingerprint" (embedding) | Your browser (TensorFlow.js). Weights download once from the internet, then inference is local. |
 | **Your classifier** | Small model you train on top of those fingerprints to tell *your* classes apart | Your browser. Trained and stored in memory for this session. |
 | **ffmpeg.wasm** | Extracts still frames from a video | Your browser. The ffmpeg engine downloads once from a CDN; your video never leaves the device. |
 
@@ -54,7 +54,7 @@ There is **no server** and **no cloud training**. You are the dataset creator an
 
 ### Identify
 
-**What you do:** Point the camera at a plant and run **Identify plant** (or **Live identify**). Save a check-in to your journal.
+**What you do:** Point the camera at an item and run **Identify item** (or **Live identify**). Save a check-in to your journal.
 
 **What runs here:**
 
@@ -77,14 +77,13 @@ Photos and predictions are **not** sent to any AI service during identification.
 
 ### Journal
 
-**What you do:** Browse saved check-ins, read care tips, ask questions, and optionally generate richer care cards.
+**What you do:** Browse saved entries, ask questions with Ollama, and generate answers about your items.
 
 **What runs here:**
 
 | Piece | What it is | Where it runs |
 |-------|-----------|---------------|
-| **Built-in care cards** | Static text from `plants.json` matched to your plant name | No model — just a lookup table shipped with the app |
-| **Ollama (optional)** | Local language model that rewrites care tips or answers questions | **Your computer**, via `http://localhost:11434` |
+| **Ollama (optional)** | Local language model that answers questions about your items | **Your computer**, via `http://localhost:11434` |
 
 **Where the data goes:**
 
@@ -92,10 +91,10 @@ Photos and predictions are **not** sent to any AI service during identification.
 |------|------------------|-------|
 | Journal entries (photos + notes) | Yes | Saved in `localStorage` in your browser |
 | Ollama settings (URL, model name) | Yes | Saved in `localStorage` |
-| Text sent to Ollama | Yes, on your machine | Only the **plant name**, **care facts from `plants.json`**, and **your question text**. No photos. |
+| Text sent to Ollama | Yes, on your machine | Only the **item name** and **your question text**. No photos. |
 | Ollama responses | Yes | Generated locally; displayed in the app |
 
-If Ollama is not running, the app falls back to the built-in care text. Nothing breaks — you just do not get AI-generated wording.
+If Ollama is not running, the app shows a helpful message. Nothing breaks.
 
 ---
 
@@ -117,10 +116,10 @@ Camera / video / images
         ▼
    Journal photos  ──►  localStorage (on your device)
 
-Plant name + care text  ──►  Ollama on localhost (optional, text only)
+Item name + question  ──►  Ollama on localhost (optional, text only)
 ```
 
-**Key takeaway for Week 1:** Most of this app keeps your photos and training data in the browser on your device. The only “AI model” that receives any of your content is Ollama — and even then, it only gets text, not images. You choose when to use it.
+**Key takeaway for Week 1:** Most of this app keeps your photos and training data in the browser on your device. The only "AI model" that receives any of your content is Ollama — and even then, it only gets text, not images. You choose when to use it.
 
 ---
 
@@ -132,7 +131,6 @@ These are **one-time downloads** of model code and weights. Your photos and vide
 |-------|-----|------|
 | MobileNet weights | Pre-trained vision model | First time you open the Train or Identify tab |
 | ffmpeg.wasm core | Video frame extraction | First time you click **Extract frames & add samples** |
-| `plants.json` | Built-in care copy | Loaded from the same app server (localhost in dev) |
 
 After the first load, your browser caches most of this.
 
@@ -141,8 +139,8 @@ After the first load, your browser caches most of this.
 ## Workflow
 
 1. **Train:** Add at least two classes with three or more samples each. Use the webcam, video + ffmpeg, or imported images. Click **Train model**.
-2. **Identify:** Point at a plant, click **Identify plant**, add an optional note, then **Save to journal**.
-3. **Journal:** Browse entries. Ask care questions or click **Generate with Ollama** for AI-written tips (optional).
+2. **Identify:** Point at an item, click **Identify item**, add an optional note, then **Save to journal**.
+3. **Journal:** Browse entries. Ask questions with Ollama (optional).
 
 ### Train from video (ffmpeg)
 
@@ -156,16 +154,10 @@ Under **Train → Train from video**:
 Or extract frames on your machine with system ffmpeg:
 
 ```bash
-npm run extract-frames -- path/to/plant.mp4
+npm run extract-frames -- path/to/video.mp4
 ```
 
 Then import the JPEG folder with **Import images**.
-
----
-
-## plants.json
-
-Maps class names (case-insensitive) to care copy. Keys like `fern` match labels such as `Fern`. This file ships with the app — no network call to a third party.
 
 ---
 
@@ -178,7 +170,7 @@ ollama serve
 ollama pull qwen2.5
 ```
 
-**Privacy reminder:** Only plant names and care facts are sent to Ollama, not photos. Journal photos stay in `localStorage` on your device. Keep the base URL on `localhost` if you want everything to stay on your machine.
+**Privacy reminder:** Only item names and questions are sent to Ollama, not photos. Journal photos stay in `localStorage` on your device. Keep the base URL on `localhost` if you want everything to stay on your machine.
 
 ---
 

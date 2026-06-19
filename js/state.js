@@ -1,13 +1,13 @@
-/** @typedef {{ label: string, tip: string, watering?: string, light?: string, mistakes?: string[], funFact?: string }} PlantMeta */
+/** @typedef {{ label: string, note?: string }} ItemMeta */
 
-/** @type {{ name: string, meta: PlantMeta, confidence: number } | null} */
-export let currentPlant = null
+/** @type {{ name: string, confidence: number } | null} */
+export let currentItem = null
 
-export function setCurrentPlant(name, meta, confidence = 0) {
-  currentPlant = { name, meta, confidence }
-  window.dispatchEvent(new CustomEvent('plant-identified', { detail: currentPlant }))
+export function setCurrentItem(name, confidence = 0) {
+  currentItem = { name, confidence }
+  window.dispatchEvent(new CustomEvent('item-identified', { detail: currentItem }))
 }
 
-export function clearCurrentPlant() {
-  currentPlant = null
+export function clearCurrentItem() {
+  currentItem = null
 }
