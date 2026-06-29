@@ -24,7 +24,7 @@
         <div class="tabs" role="tablist">
           <button type="button" class="tab is-active" data-tab="train" role="tab" aria-selected="true">Train</button>
           <button type="button" class="tab" data-tab="identify" role="tab" aria-selected="false">Identify</button>
-          <button type="button" class="tab" data-tab="journal" role="tab" aria-selected="false">Journal</button>
+          <button type="button" class="tab" data-tab="gallery" role="tab" aria-selected="false">My Room</button>
         </div>
 
         <div id="panel-train" class="panel" role="tabpanel">
@@ -84,6 +84,13 @@
             </div>
             <p class="hint hint--small">Or run <code>npm run extract-frames -- your-video.mp4</code> locally, then import the JPEG folder.</p>
           </details>
+
+          <div id="training-gallery" class="training-gallery" hidden>
+            <hr />
+            <p class="training-gallery__heading">Training samples for <strong id="training-gallery-class">—</strong></p>
+            <p class="hint">Samples are stored in memory and lost on page refresh. Click <strong>Save to gallery</strong> to keep one permanently.</p>
+            <div id="training-gallery-grid" class="training-gallery__grid"></div>
+          </div>
         </div>
 
         <div id="panel-identify" class="panel" role="tabpanel" hidden>
@@ -97,42 +104,26 @@
             <button type="button" id="btn-identify" class="btn btn--primary" disabled>Identify item</button>
             <button type="button" id="btn-identify-loop" class="btn btn--secondary" disabled>Live identify</button>
           </div>
-          <div class="field">
-            <label for="journal-note">Note (optional)</label>
-            <input id="journal-note" type="text" placeholder="e.g. Found this at a thrift store" maxlength="200" />
-          </div>
-          <button type="button" id="btn-save-journal" class="btn btn--primary" disabled>Save to journal</button>
         </div>
 
-        <div id="panel-journal" class="panel" role="tabpanel" hidden>
-          <p id="llm-status" class="status llm-status">AI assistant ready on first question.</p>
-          <div id="journal-gallery" class="journal-gallery" aria-label="Journal entries"></div>
-          <div id="journal-detail" class="journal-detail" hidden></div>
-          <div class="field">
-            <label for="item-select">View details for</label>
-            <select id="item-select">
-              <option value="">Choose an item…</option>
-            </select>
+        <div id="panel-gallery" class="panel" role="tabpanel" hidden>
+          <p class="status">Your saved gallery — items you've chosen to keep.</p>
+          <div id="my-room-gallery" class="my-room-gallery">
+            <p class="gallery-empty">Nothing saved yet. Train some samples and click <strong>Save to gallery</strong>.</p>
           </div>
-          <p class="item-title">Item: <strong id="item-display">—</strong></p>
-
-          <div class="item-chips">
-            <button type="button" class="chip" data-item-chip="What is this item?">What is it?</button>
-            <button type="button" class="chip" data-item-chip="How much is this worth?">Value</button>
-            <button type="button" class="chip" data-item-chip="Any tips for maintaining this?">Care tips</button>
-          </div>
-          <div id="item-messages" class="item-messages"></div>
-          <div class="row">
-            <input id="item-question" type="text" placeholder="Ask about your item…" />
-            <button type="button" id="btn-ask" class="btn btn--primary">Ask</button>
-          </div>
-          <div class="row journal-actions">
-            <button type="button" id="btn-delete-entry" class="btn btn--ghost" disabled>Delete entry</button>
-            <button type="button" id="btn-clear-journal" class="btn btn--ghost">Clear journal</button>
-          </div>
+          <button type="button" id="btn-clear-my-room" class="btn btn--ghost">Clear saved gallery</button>
         </div>
       </section>
     </main>
+
+    <!-- Training overlay -->
+    <div id="training-overlay" class="training-overlay" hidden>
+      <div class="training-overlay__box">
+        <p class="training-overlay__title">Training in progress…</p>
+        <p class="training-overlay__sub">Using local MobileNet model (pre-trained on ImageNet)</p>
+        <div class="training-overlay__spinner"></div>
+      </div>
+    </div>
 
     <script type="module" src="/js/main.js"></script>
   </body>

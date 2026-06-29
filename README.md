@@ -1,8 +1,8 @@
 # My Room
 
-Hands-on capstone for **Her AI Studio — Week 1**. This app lets you train a camera classifier to recognize your belongings, identify them with your camera, and keep a photo journal with notes.
+Hands-on demo for **Her AI Studio — Week 1**. This app lets you train a camera classifier to recognize your belongings and identify them with your camera.
 
-The big question for this lesson: **where does your data go, and where do the models actually run?**
+The two big questions for this app are: **where does your data go, and where do the models actually run?**
 
 ---
 
@@ -30,6 +30,8 @@ The app has three tabs. Each one uses different data and different models.
 - **Train from video** — record or upload a short clip, then use ffmpeg to extract frames into training samples
 - **Import images** — upload JPEGs (for example, frames you extracted with the local script below)
 
+**Training gallery:** Each captured/imported sample shows as a thumbnail in the Train panel. Samples are stored in memory only — they disappear on page refresh. Click **Save to gallery** on any sample to keep it permanently in the My Room tab.
+
 **What runs here:**
 
 | Piece | What it is | Where it runs |
@@ -46,6 +48,7 @@ The app has three tabs. Each one uses different data and different models.
 | Recorded / uploaded video | Yes | Processed in memory. Never uploaded. |
 | Training samples (embeddings) | Yes, but temporary | Kept in browser memory only. Refreshing the page clears them. |
 | Trained classifier | Yes, but temporary | Same as above — gone after a refresh. |
+| Training sample images | Yes, but temporary | In memory only. Not persisted. |
 
 There is **no server** and **no cloud training**. You are the dataset creator and the model trainer.
 
@@ -53,7 +56,7 @@ There is **no server** and **no cloud training**. You are the dataset creator an
 
 ### Identify
 
-**What you do:** Point the camera at an item and run **Identify item** (or **Live identify**). Save a check-in to your journal.
+**What you do:** Point the camera at an item and run **Identify item** (or **Live identify**).
 
 **What runs here:**
 
@@ -67,32 +70,17 @@ There is **no server** and **no cloud training**. You are the dataset creator an
 | Data | Stays on device? | Notes |
 |------|------------------|-------|
 | Live camera frames | Yes | Processed frame-by-frame in the browser |
-| Prediction (name + confidence) | Yes | Shown on screen; optionally saved to the journal |
-| Journal photo | Yes | Captured locally when you click **Save to journal** |
+| Prediction (name + confidence) | Yes | Shown on screen |
 
 Photos and predictions are **not** sent to any AI service during identification.
 
 ---
 
-### Journal
+### My Room
 
-**What you do:** Browse saved entries and ask questions about your items using a local AI assistant powered by Transformers.js.
+**What you do:** Browse the photos you've chosen to save from your training samples. Each saved photo shows the class name and the date it was saved.
 
-**What runs here:**
-
-| Piece | What it is | Where it runs |
-|-------|-----------|---------------|
-| **SmolLM2-135M-Instruct** | Lightweight language model (135 M parameters, quantized) that answers questions about your items | Your browser (Transformers.js + ONNX Runtime Web). Downloaded once from Hugging Face, then cached locally. |
-
-**Where the data goes:**
-
-| Data | Stays on device? | Notes |
-|------|------------------|-------|
-| Journal entries (photos + notes) | Yes | Saved in `localStorage` in your browser |
-| Text sent to the model | Yes | Only the **item name** and **your question text**. No photos. Inference runs entirely in the browser. |
-| Model response | Yes | Generated locally; displayed in the app |
-
-The language model runs **entirely in your browser** — no server, no API key, no network call after the initial download.
+Saved items persist in `localStorage` and survive page refreshes. You can delete individual items or clear the entire gallery.
 
 ---
 
@@ -112,12 +100,13 @@ Camera / video / images
    (frame extraction)
         │
         ▼
-   Journal photos  ──►  localStorage (on your device)
-
-Item name + question  ──►  SmolLM2-135M-Instruct (browser, ONNX, text only)
+   Training gallery (in memory)
+        │
+        ▼  (click "Save to gallery")
+   My Room gallery (localStorage, persistent)
 ```
 
-**Key takeaway for Week 1:** Everything in this app — vision, classification, and text generation — runs locally in your browser. Your photos, videos, and questions never leave your device.
+**Key takeaway for Week 1:** Everything in this app — vision and classification — runs locally in your browser. Your photos and videos never leave your device.
 
 ---
 
@@ -129,7 +118,6 @@ These are **one-time downloads** of model weights. Your photos and videos are no
 |-------|-----|------|-------------|
 | MobileNet weights | Pre-trained vision model | First time you open the Train or Identify tab | ~16 MB |
 | ffmpeg.wasm core | Video frame extraction | First time you click **Extract frames & add samples** | ~30 MB |
-| SmolLM2-135M-Instruct (q4) | In-browser language model | First time you ask a question in the Journal tab | ~270 MB |
 
 After the first load, your browser caches all of this. Subsequent loads are instant.
 
@@ -138,8 +126,8 @@ After the first load, your browser caches all of this. Subsequent loads are inst
 ## Workflow
 
 1. **Train:** Add at least two classes with three or more samples each. Use the webcam, video + ffmpeg, or imported images. Click **Train model**.
-2. **Identify:** Point at an item, click **Identify item**, add an optional note, then **Save to journal**.
-3. **Journal:** Browse entries. Select an item and ask a question — the model loads on first use.
+2. **Identify:** Point at an item, click **Identify item** to see the prediction.
+3. **My Room:** While training, click **Save to gallery** on any sample to keep a permanent copy. Browse them anytime in the My Room tab.
 
 ### Train from video (ffmpeg)
 
@@ -164,7 +152,5 @@ Then import the JPEG folder with **Import images**.
 
 1. When you capture a training sample, where is that image stored?
 2. What is the difference between MobileNet and the classifier you train?
-3. If you save a journal entry, where does the photo live?
-4. What text (if any) leaves your browser when you ask the AI assistant a question?
-5. What happens to your trained model if you refresh the page?
-6. How is the in-browser language model (SmolLM2) different from a cloud API like ChatGPT?
+3. What happens to your trained model if you refresh the page?
+4. How is "Save to gallery" different from a regular training sample?

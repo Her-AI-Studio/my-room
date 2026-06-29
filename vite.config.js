@@ -5,6 +5,6 @@ export default defineConfig({
   server: { port: 5174, open: true },
   base: '/my-room/',
   optimizeDeps: {
-    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util', '@huggingface/transformers'],
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
   },
 })

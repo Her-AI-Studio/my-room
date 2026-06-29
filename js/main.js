@@ -1,17 +1,7 @@
 import * as tf from '@tensorflow/tfjs'
 import * as mobilenet from '@tensorflow-models/mobilenet'
-import { setCurrentItem, clearCurrentItem } from './state.js'
-import { captureVideoFrameDataUrl, sourceToFrameTensor, blobToFrameTensor } from './capture.js'
+import { sourceToFrameTensor, blobToFrameTensor } from './capture.js'
 import { VideoRecorder } from './video-recorder.js'
-import {
-  addEntry,
-  clearAllEntries,
-  deleteEntry,
-  renderGallery,
-  renderEntryDetail,
-  getEntry,
-} from './journal.js'
-import { initItemAssistant, populateItemSelect } from './item-assistant.js'
 
 const $ = (id) => document.getElementById(id)
 const setDisabled = (id, val) => { const el = $(id); if (el) el.disabled = val }
@@ -31,14 +21,108 @@ let classifier = null
 let classIndexMap = []
 let liveLoopId = null
 let lastIdentification = null
-let selectedJournalId = null
 const videoRecorder = new VideoRecorder()
 /** @type {Blob | null} */
 let recordedVideoBlob = null
 
 const classes = []
-const samples = []
+const samples = [] // { classId, embedding, imageDataUrl }
 
+// --- My Room gallery (persistent) ---
+const GALLERY_KEY = 'my-room-gallery'
+
+function loadGallery() {
+  try {
+    const raw = localStorage.getItem(GALLERY_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function saveGallery(items) {
+  localStorage.setItem(GALLERY_KEY, JSON.stringify(items))
+}
+
+function addToGallery(imageDataUrl, className) {
+  const items = loadGallery()
+  items.unshift({
+    id: `gallery_${Date.now()}`,
+    imageDataUrl,
+    className,
+    createdAt: new Date().toISOString(),
+  })
+  saveGallery(items)
+  renderMyRoomGallery()
+}
+
+function removeFromGallery(id) {
+  saveGallery(loadGallery().filter((i) => i.id !== id))
+  renderMyRoomGallery()
+}
+
+function clearGallery() {
+  if (!confirm('Clear all saved gallery items? This cannot be undone.')) return
+  saveGallery([])
+  renderMyRoomGallery()
+}
+
+function formatDate(iso) {
+  try {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+  } catch { return iso }
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
+}
+
+function renderMyRoomGallery() {
+  const container = $('my-room-gallery')
+  if (!container) return
+  const items = loadGallery()
+  if (items.length === 0) {
+    container.innerHTML = '<p class="gallery-empty">Nothing saved yet. Train some samples and click <strong>Save to gallery</strong>.</p>'
+    return
+  }
+  container.innerHTML = ''
+  const grid = document.createElement('div')
+  grid.className = 'my-room-grid'
+  for (const item of items) {
+    const card = document.createElement('div')
+    card.className = 'my-room-card'
+    card.innerHTML = `
+      <img src="${item.imageDataUrl}" alt="${escapeHtml(item.className)}" loading="lazy" />
+      <span class="my-room-card__name">${escapeHtml(item.className)}</span>
+      <span class="my-room-card__date">${escapeHtml(formatDate(item.createdAt))}</span>
+      <button type="button" class="my-room-card__delete" data-gallery-id="${item.id}" title="Remove from gallery">&times;</button>
+    `
+    card.querySelector('.my-room-card__delete').addEventListener('click', (e) => {
+      e.stopPropagation()
+      removeFromGallery(item.id)
+    })
+    grid.append(card)
+  }
+  container.append(grid)
+}
+
+// --- Capture frame as data URL ---
+function captureFrameDataUrl() {
+  const w = video.videoWidth
+  const h = video.videoHeight
+  if (!w || !h) return null
+  const scale = Math.min(1, 480 / Math.max(w, h))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(w * scale)
+  canvas.height = Math.round(h * scale)
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/jpeg', 0.85)
+}
+
+// --- Camera ---
 async function initCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({
     video: { facingMode: 'environment', width: 280, height: 280 },
@@ -59,10 +143,55 @@ function getFrameTensor() {
   return sourceToFrameTensor(video)
 }
 
-function addEmbeddingSample(classId, embedding) {
-  samples.push({ classId, embedding: embedding.clone() })
+function addEmbeddingSample(classId, embedding, imageDataUrl) {
+  samples.push({ classId, embedding: embedding.clone(), imageDataUrl })
 }
 
+// --- Training gallery ---
+function renderTrainingGallery() {
+  const container = $('training-gallery')
+  const grid = $('training-gallery-grid')
+  const label = $('training-gallery-class')
+  if (!container || !grid || !label) return
+
+  const classId = classSelect.value
+  if (!classId) {
+    container.hidden = true
+    return
+  }
+
+  const className = classes.find((c) => c.classId === classId)?.name ?? '—'
+  label.textContent = className
+
+  const classSamples = samples.filter((s) => s.classId === classId)
+  if (classSamples.length === 0) {
+    container.hidden = true
+    return
+  }
+
+  container.hidden = false
+  grid.innerHTML = ''
+  for (let i = 0; i < classSamples.length; i++) {
+    const s = classSamples[i]
+    const card = document.createElement('div')
+    card.className = 'sample-card'
+    card.innerHTML = `
+      <img src="${s.imageDataUrl || ''}" alt="Sample ${i + 1}" loading="lazy" />
+      <span class="sample-card__num">#${i + 1}</span>
+      <button type="button" class="sample-card__save" title="Save to gallery">Save to gallery</button>
+    `
+    card.querySelector('.sample-card__save').addEventListener('click', (e) => {
+      e.stopPropagation()
+      if (s.imageDataUrl) {
+        addToGallery(s.imageDataUrl, className)
+        statusEl.textContent = `Saved "${className}" to gallery.`
+      }
+    })
+    grid.append(card)
+  }
+}
+
+// --- Import helpers ---
 async function importFrameBlobs(frameBlobs, classId, onProgress) {
   if (!mobileNetModel || !classId) return 0
 
@@ -72,16 +201,27 @@ async function importFrameBlobs(frameBlobs, classId, onProgress) {
     const frame = await blobToFrameTensor(frameBlobs[i])
     const embedding = mobileNetModel.infer(frame, true)
     frame.dispose()
-    addEmbeddingSample(classId, embedding)
+
+    // Convert blob to data URL for gallery display
+    let imageDataUrl = null
+    try {
+      const blob = frameBlobs[i]
+      if (blob instanceof Blob && blob.type.startsWith('image/')) {
+        imageDataUrl = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.readAsDataURL(blob)
+        })
+      }
+    } catch { /* ignore */ }
+
+    addEmbeddingSample(classId, embedding, imageDataUrl)
     embedding.dispose()
     added++
   }
   updateCounts()
+  renderTrainingGallery()
   return added
-}
-
-function syncItemList() {
-  populateItemSelect(classes.map((c) => c.name))
 }
 
 function updateClassSelect() {
@@ -92,8 +232,8 @@ function updateClassSelect() {
     opt.value = ''
     opt.textContent = 'Add a class first'
     classSelect.append(opt)
-    syncItemList()
     updateVideoUi()
+    renderTrainingGallery()
     return
   }
   classSelect.disabled = false
@@ -103,8 +243,8 @@ function updateClassSelect() {
     opt.textContent = c.name
     classSelect.append(opt)
   }
-  syncItemList()
   updateVideoUi()
+  renderTrainingGallery()
 }
 
 function updateCounts() {
@@ -138,16 +278,19 @@ function addClass() {
   updateClassSelect()
   classSelect.value = classId
   updateCounts()
+  renderTrainingGallery()
 }
 
 function captureSample() {
   if (!mobileNetModel || !classSelect.value) return
+  const imageDataUrl = captureFrameDataUrl()
   const frame = getFrameTensor()
   const embedding = mobileNetModel.infer(frame, true)
   frame.dispose()
-  addEmbeddingSample(classSelect.value, embedding)
+  addEmbeddingSample(classSelect.value, embedding, imageDataUrl)
   embedding.dispose()
   updateCounts()
+  renderTrainingGallery()
   statusEl.textContent = `Captured sample for "${classes.find((c) => c.classId === classSelect.value)?.name}".`
 }
 
@@ -293,17 +436,19 @@ function clearSamples() {
   }
   classIndexMap = []
   lastIdentification = null
-  clearCurrentItem()
   $('btn-identify').disabled = true
   $('btn-identify-loop').disabled = true
-  $('btn-save-journal').disabled = true
   updateCounts()
+  renderTrainingGallery()
   statusEl.textContent = 'Samples cleared.'
   updateVideoUi()
 }
 
 async function trainModel() {
   if (classes.length < 2) return
+
+  const overlay = $('training-overlay')
+  overlay?.removeAttribute('hidden')
 
   $('btn-train').disabled = true
   statusEl.textContent = 'Training…'
@@ -352,6 +497,8 @@ async function trainModel() {
   xs.dispose()
   ys.dispose()
 
+  overlay?.setAttribute('hidden', '')
+
   statusEl.textContent = 'Model trained. Go to Identify.'
   $('btn-identify').disabled = false
   $('btn-identify-loop').disabled = false
@@ -387,66 +534,8 @@ async function identifyOnce() {
   resultConf.textContent = `${pct}% confidence`
 
   lastIdentification = { className, pct }
-  setCurrentItem(className, pct)
-  $('btn-save-journal').disabled = false
 
   return lastIdentification
-}
-
-function refreshJournalUi() {
-  const gallery = $('journal-gallery')
-  if (!gallery) return
-  renderGallery(gallery, selectJournalEntry, selectedJournalId)
-  const entry = selectedJournalId ? getEntry(selectedJournalId) : null
-  renderEntryDetail($('journal-detail'), entry)
-  if ($('btn-delete-entry')) $('btn-delete-entry').disabled = !entry
-}
-
-function selectJournalEntry(entry) {
-  selectedJournalId = entry.id
-  refreshJournalUi()
-}
-
-async function saveToJournal() {
-  if (!lastIdentification) {
-    identifyStatusEl.textContent = 'Identify an item first.'
-    return
-  }
-  $('btn-save-journal').disabled = true
-  try {
-    const imageDataUrl = captureVideoFrameDataUrl(video)
-    const note = $('journal-note')?.value ?? ''
-    const entry = addEntry({
-      itemName: lastIdentification.className,
-      confidence: lastIdentification.pct,
-      imageDataUrl,
-      note,
-    })
-    if ($('journal-note')) $('journal-note').value = ''
-    identifyStatusEl.textContent = `Saved "${entry.itemName}" to your journal.`
-    selectedJournalId = entry.id
-    refreshJournalUi()
-  } catch (err) {
-    identifyStatusEl.textContent = `Could not save: ${err.message}`
-    console.error(err)
-  } finally {
-    $('btn-save-journal').disabled = false
-  }
-}
-
-function deleteSelectedEntry() {
-  if (!selectedJournalId) return
-  if (!confirm('Delete this journal entry?')) return
-  deleteEntry(selectedJournalId)
-  selectedJournalId = null
-  refreshJournalUi()
-}
-
-function clearJournal() {
-  if (!confirm('Clear all journal entries? This cannot be undone.')) return
-  clearAllEntries()
-  selectedJournalId = null
-  refreshJournalUi()
 }
 
 function stopLiveLoop() {
@@ -485,11 +574,10 @@ function setupTabs() {
       })
       $('panel-train').hidden = name !== 'train'
       $('panel-identify').hidden = name !== 'identify'
-      $('panel-journal').hidden = name !== 'journal'
+      $('panel-gallery').hidden = name !== 'gallery'
       if (name !== 'identify') stopLiveLoop()
-      if (name === 'journal') {
-        refreshJournalUi()
-      }
+      if (name === 'gallery') renderMyRoomGallery()
+      if (name === 'train') renderTrainingGallery()
     })
   })
 }
@@ -502,6 +590,8 @@ classNameInput.addEventListener('keydown', (e) => {
 $('btn-capture').addEventListener('click', captureSample)
 $('btn-train').addEventListener('click', () =>
   trainModel().catch((err) => {
+    const overlay = $('training-overlay')
+    overlay?.setAttribute('hidden', '')
     statusEl.textContent = `Training failed: ${err.message}`
     console.error(err)
   }),
@@ -512,22 +602,22 @@ $('btn-extract-frames')?.addEventListener('click', () => extractAndImportFrames(
 $('btn-clear-video')?.addEventListener('click', clearVideo)
 $('video-upload')?.addEventListener('change', (e) => handleVideoUpload(e).catch(console.error))
 $('image-upload')?.addEventListener('change', (e) => handleImageUpload(e).catch(console.error))
-classSelect.addEventListener('change', updateVideoUi)
+classSelect.addEventListener('change', () => {
+  updateVideoUi()
+  renderTrainingGallery()
+})
 $('btn-identify').addEventListener('click', () => identifyOnce().catch(console.error))
 $('btn-identify-loop').addEventListener('click', toggleLiveIdentify)
-$('btn-save-journal').addEventListener('click', () => saveToJournal())
-$('btn-delete-entry')?.addEventListener('click', deleteSelectedEntry)
-$('btn-clear-journal')?.addEventListener('click', clearJournal)
+$('btn-clear-my-room')?.addEventListener('click', clearGallery)
 
 setupTabs()
-initItemAssistant()
+renderMyRoomGallery()
 
 ;(async () => {
   try {
     await initCamera()
     await loadMobileNet()
     updateCounts()
-    refreshJournalUi()
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}. Camera access is required.`
     console.error(err)

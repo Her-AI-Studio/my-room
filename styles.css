@@ -302,17 +302,71 @@ body {
   color: var(--muted);
 }
 
-#btn-save-journal {
+/* --- Training gallery --- */
+.training-gallery {
+  margin-top: 0.75rem;
+}
+
+.training-gallery__heading {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0.25rem 0;
+}
+
+.training-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.sample-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: oklch(99% 0.005 270);
+}
+
+.sample-card img {
   width: 100%;
-  margin-top: 0.25rem;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
 }
 
-/* Journal */
-.journal-gallery {
-  margin-bottom: 0.75rem;
+.sample-card__num {
+  font-size: 0.6rem;
+  color: var(--muted);
+  padding: 0.15rem 0.3rem;
+  text-align: center;
 }
 
-.journal-empty {
+.sample-card__save {
+  appearance: none;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+  border-radius: 0 0 0.4rem 0.4rem;
+  transition: opacity 0.15s;
+}
+
+.sample-card__save:hover {
+  opacity: 0.85;
+}
+
+/* --- My Room gallery --- */
+.my-room-gallery {
+  min-height: 4rem;
+}
+
+.gallery-empty {
   font-size: 0.85rem;
   color: var(--muted);
   margin: 0 0 0.75rem;
@@ -322,176 +376,119 @@ body {
   border-radius: 0.75rem;
 }
 
-.journal-grid {
+.my-room-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
-.journal-card {
+.my-room-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 0;
-  border: 2px solid var(--border);
-  border-radius: 0.65rem;
-  background: oklch(99% 0.005 270);
-  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
   overflow: hidden;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  background: oklch(99% 0.005 270);
 }
 
-.journal-card:hover {
-  border-color: var(--primary);
-}
-
-.journal-card.is-selected {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px oklch(56% 0.23 291 / 0.25);
-}
-
-.journal-card img {
+.my-room-card img {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
   display: block;
 }
 
-.journal-card__name {
-  font-size: 0.75rem;
+.my-room-card__name {
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 0.35rem 0.4rem 0;
+  padding: 0.25rem 0.35rem 0;
 }
 
-.journal-card__date {
-  font-size: 0.65rem;
+.my-room-card__date {
+  font-size: 0.6rem;
   color: var(--muted);
-  padding: 0 0.4rem 0.4rem;
+  padding: 0 0.35rem 0.3rem;
 }
 
-.journal-detail {
-  margin-bottom: 0.75rem;
-  padding: 0.75rem;
-  background: oklch(97% 0.01 291);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-}
-
-.journal-detail__photo {
-  margin: 0 0 0.5rem;
-}
-
-.journal-detail__photo img {
-  width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  border-radius: 0.5rem;
-  display: block;
-}
-
-.journal-detail__meta {
-  margin: 0;
-  font-size: 0.85rem;
-}
-
-.journal-detail__note {
-  margin: 0.5rem 0 0;
-  font-size: 0.88rem;
-  font-style: italic;
-  color: var(--muted);
-}
-
-.journal-actions {
-  margin-top: 0.75rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
-}
-
-.journal-actions .btn--ghost {
-  flex: 1;
-}
-
-/* Item info */
-.item-title {
-  margin: 0 0 0.75rem;
-  font-size: 0.95rem;
-}
-
-.ollama-status.is-online {
-  color: oklch(42% 0.14 145);
-}
-
-.ollama-settings {
-  margin: 0.5rem 0 0.75rem;
-  font-size: 0.85rem;
-}
-
-.ollama-settings summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.item-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 0.5rem;
-}
-
-.chip {
-  border: 1px solid var(--border);
-  background: var(--bg);
-  border-radius: 999px;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  color: var(--text);
-}
-
-.chip:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.item-messages {
-  max-height: 140px;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  background: oklch(99% 0.005 270);
-}
-
-.item-msg {
-  font-size: 0.82rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: 0.4rem;
-  margin-bottom: 0.35rem;
-  max-width: 95%;
-}
-
-.item-msg--user {
-  background: var(--primary);
+.my-room-card__delete {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  appearance: none;
+  border: none;
+  background: oklch(0% 0 0 / 0.5);
   color: white;
-  margin-left: auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
 }
 
-.item-msg--assistant {
-  background: oklch(95% 0.012 270);
-  color: var(--text);
+.my-room-card:hover .my-room-card__delete {
+  opacity: 1;
 }
 
-#item-question {
-  flex: 1;
-  min-width: 120px;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  font: inherit;
+.my-room-card__delete:hover {
+  background: oklch(55% 0.2 25);
+}
+
+/* --- Training overlay --- */
+.training-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(0% 0 0 / 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.training-overlay[hidden] {
+  display: none;
+}
+
+.training-overlay__box {
+  background: oklch(100% 0 0);
+  border-radius: 1rem;
+  padding: 2rem 2.5rem;
+  text-align: center;
+  box-shadow: 0 8px 32px oklch(0% 0 0 / 0.2);
+  max-width: 360px;
+}
+
+.training-overlay__title {
+  margin: 0 0 0.3rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.training-overlay__sub {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.training-overlay__spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid oklch(90% 0.016 270);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: training-spin 0.8s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes training-spin {
+  to { transform: rotate(360deg); }
 }
